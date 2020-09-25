@@ -6,6 +6,7 @@
 import requests
 import pprint
 from bs4 import BeautifulSoup
+import re
 
 # определяем список ключевых слов
 WEBSITE = 'https://habr.com/ru/all/'
@@ -13,7 +14,27 @@ KEYWORDS = ['дизайн', 'фото', 'web', 'python','CMS','Астроном�
 desired_hubs=set(KEYWORDS)
 
 
+#
+def get_template(keywords):
+    """
+    Получаем шаблон для регулярки из списка
+    """
+    ret_str=''
+    for key in keywords:
+        if ret_str == '':
+            ret_str='('+ key + ')'
+        else:
+            ret_str+='|(' + key + ')'
+    return ret_str
+
 def main():
+
+    #получаем шаблон
+    pattern=get_template(KEYWORDS)
+    print(pattern)
+
+    regex = re.compile(pattern)
+
 
     #получаем страницу со свежими статьями
     ret=requests.get(WEBSITE)
@@ -28,7 +49,18 @@ def main():
     #разбираем все статьи и ищем <дата> - <заголовок> - <ссылка>
     art_list=[]
     for i, article in enumerate(articles):
-        #ищем нужные нам хабы и складываем их в hubs
+
+        #вначале смотрим сам текст статьи и ищем в нем ключевые слова:
+        target_text=article.find('div',class_='post__text')
+        print(target_text.text)
+
+        result=re.search(pattern,target_text.text)
+        print('Результат поиска в тексте по ключам')
+        print(type(result))
+        print(result)
+
+
+        #теперь ищем нужные нам хабы и складываем их в hubs
         #print(f'Поиск хабов в статье номер {i+1}:')
 
         site_hubs=article.find_all('a',class_='hub-link')
@@ -41,9 +73,9 @@ def main():
         #print(desired_hubs)
         #print(desired_hubs.intersection(hubs))
 
-        #проверяем пересечение с заданным списком
-        if desired_hubs.intersection(hubs):
-
+        #проверяем пересечение с заданным списком hubs или регулярки
+        if desired_hubs.intersection(hubs) or (result != None):
+        #if desired_hubs.intersection(hubs):
             #собираем информацию:
             choice=dict()
             date_=article.find('span','post__time')
@@ -59,9 +91,9 @@ def main():
 
             art_list.append(choice)
 
-
     #Результат:
     pprint.pprint(art_list)
+    pprint.pprint(len(art_list))
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
